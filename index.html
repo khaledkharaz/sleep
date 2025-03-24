@@ -214,27 +214,6 @@
       input:checked + .toggle-slider:before {
         transform: translateX(26px);
       }
-
-      .custom-timer-input {
-        margin-bottom: 15px;
-      }
-      .custom-timer-input label {
-        display: block;
-        margin-bottom: 5px;
-      }
-      .timer-set-button {
-        padding: 8px 12px;
-        border: none;
-        border-radius: 15px;
-        background-color: #2d2d2d;
-        color: #e0e0e0;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        font-size: 14px;
-      }
-      .timer-set-button:hover {
-        background-color: #3d3d3d;
-      }
     </style>
   </head>
   <body>
@@ -270,26 +249,13 @@
         </div>
 
         <div class="timer-options">
-          <div class="timer-preset" data-time="10">10 min</div>
-          <div class="timer-preset" data-time="20">20 min</div>
+          <div class="timer-preset" data-time="15">15 min</div>
           <div class="timer-preset" data-time="30">30 min</div>
           <div class="timer-preset active" data-time="60">1 hr</div>
           <div class="timer-preset" data-time="120">2 hrs</div>
+          <div class="timer-preset" data-time="240">4 hrs</div>
+          <div class="timer-preset" data-time="480">8 hrs</div>
           <div class="timer-preset" data-time="-1">∞</div>
-        </div>
-
-        <div class="custom-timer-input">
-          <label for="custom-duration">Custom Timer (minutes):</label>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <input
-              type="number"
-              id="custom-duration"
-              min="1"
-              placeholder="Enter minutes"
-              style="width: 80px; padding: 8px; border-radius: 5px; border: 1px solid #2d2d2d; background-color: #1e1e1e; color: #e0e0e0;"
-            />
-            <button class="timer-set-button" id="set-custom-timer">Set Timer</button>
-          </div>
         </div>
 
         <button class="button" id="play-pause">START</button>
@@ -299,16 +265,19 @@
     </div>
 
     <script>
-      // Audio Context (no longer needed for noise generation here)
-      let audioContext; // Keep for visualizer if you want to connect it
+      // Audio Context
+      let audioContext;
+      let noiseNode;
+      let gainNode;
       let analyser;
       let isPlaying = false;
-      let timerInterval; // No longer used for timer logic
+      let timerInterval;
       let remainingTime = -1; // -1 means infinity
-      let currentNoiseType = "white"; // Keep track of current noise type in UI
+      let currentNoiseType = "white";
+      let noiseBuffer;
       let visualizerBars = [];
 
-      // Initialize visualizer (remains the same)
+      // Initialize visualizer
       function initVisualizer() {
         const visualizer = document.getElementById("visualizer");
         visualizer.innerHTML = "";
@@ -323,10 +292,10 @@
         }
       }
 
-      // Update visualizer (remains the same, but audio source might change)
+      // Update visualizer
       function updateVisualizer() {
         if (!analyser || !isPlaying) return;
-        // ... (same visualizer code as before) ...
+
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
         analyser.getByteFrequencyData(dataArray);
 
@@ -347,15 +316,24 @@
         requestAnimationFrame(updateVisualizer);
       }
 
-      // Initialize audio context (only for visualizer now)
+      // Initialize audio context
       function initAudio() {
         try {
           audioContext = new (window.AudioContext ||
             window.webkitAudioContext)();
+          gainNode = audioContext.createGain();
           analyser = audioContext.createAnalyser();
-          analyser.fftSize = 2048;
 
-          // No need to create gainNode or noiseNode here
+          analyser.fftSize = 2048;
+          gainNode.connect(analyser);
+          analyser.connect(audioContext.destination);
+
+          // Set initial volume
+          const volumeSlider = document.getElementById("volume");
+          gainNode.gain.value = volumeSlider.value;
+
+          // Create initial noise
+          createNoise(currentNoiseType);
 
           return true;
         } catch (e) {
@@ -366,49 +344,113 @@
         }
       }
 
+      // Create noise of specified type
+      function createNoise(type) {
+        currentNoiseType = type;
 
-      // Start or stop the noise (now communicates with service worker)
+        if (noiseNode) {
+          noiseNode.disconnect();
+        }
+
+        // Create 2-second buffer (longer is more CPU efficient)
+        const bufferSize = 2 * audioContext.sampleRate;
+        noiseBuffer = audioContext.createBuffer(
+          1,
+          bufferSize,
+          audioContext.sampleRate
+        );
+        const data = noiseBuffer.getChannelData(0);
+
+        // Fill the buffer with noise based on type
+        let b0 = 0,
+          b1 = 0,
+          b2 = 0,
+          b3 = 0,
+          b4 = 0,
+          b5 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+          let white = Math.random() * 2 - 1;
+
+          if (type === "white") {
+            data[i] = white;
+          } else if (type === "pink") {
+            // Pink noise algorithm (Paul Kellet's method)
+            b0 = 0.99886 * b0 + white * 0.0555179;
+            b1 = 0.99332 * b1 + white * 0.0750759;
+            b2 = 0.969 * b2 + white * 0.153852;
+            b3 = 0.8665 * b3 + white * 0.3104856;
+            b4 = 0.55 * b4 + white * 0.5329522;
+            b5 = -0.7616 * b5 - white * 0.016898;
+            data[i] =
+              (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+          } else if (type === "brown") {
+            // Brown noise (integrated white noise)
+            const brown = (b0 + 0.02 * white) / 1.02;
+            b0 = brown;
+            data[i] = brown * 3.5; // Amplify as brown is quiet
+          }
+        }
+
+        noiseNode = audioContext.createBufferSource();
+        noiseNode.buffer = noiseBuffer;
+        noiseNode.loop = true;
+
+        if (isPlaying) {
+          noiseNode.connect(gainNode);
+          noiseNode.start();
+        }
+
+        // Update active class on noise options
+        document.querySelectorAll(".noise-option").forEach((option) => {
+          option.classList.remove("active");
+        });
+        document.getElementById(type).classList.add("active");
+      }
+
+      // Start or stop the noise
       function toggleNoise() {
-        if (!isPlaying) {
+        if (!audioContext) {
+          if (!initAudio()) return;
+        }
+
+        if (isPlaying) {
+          // Stop playing
+          if (noiseNode) {
+            noiseNode.stop();
+            noiseNode.disconnect();
+          }
+          clearInterval(timerInterval);
+          document.getElementById("play-pause").textContent = "START";
+          document.getElementById("status").textContent = "Paused";
+          isPlaying = false;
+        } else {
+          // Resume or start context if suspended
+          if (audioContext.state === "suspended") {
+            audioContext.resume();
+          }
+
           // Start playing
-          const duration = remainingTime > 0 ? remainingTime : 0; // Send duration to SW
-          navigator.serviceWorker.ready.then(registration => {
-            registration.active.postMessage({
-              action: 'start',
-              noiseType: currentNoiseType,
-              duration: duration // Send duration in minutes
-            });
-          });
+          noiseNode = audioContext.createBufferSource();
+          noiseNode.buffer = noiseBuffer;
+          noiseNode.loop = true;
+          noiseNode.connect(gainNode);
+          noiseNode.start();
 
           document.getElementById("play-pause").textContent = "STOP";
           document.getElementById("status").textContent = "Playing";
           isPlaying = true;
 
-          // Start visualizer (if audio context initialized)
-          if (audioContext) {
-              // We need to get the analyser from the service worker's audio graph to visualize background audio.
-              // This is more complex and might require more messaging or shared state.
-              // For now, the visualizer might only work when the page is in the foreground.
-              // A simpler approach for background visualization is to create a separate analyser in the service worker
-              // and send visualization data back to the client, but that adds complexity.
-
-              // For now, let's keep the visualizer as is, it will visualize when the page is in foreground.
-              updateVisualizer();
+          // Start timer if set
+          if (remainingTime > 0) {
+            startTimer(remainingTime);
           }
 
-
-        } else {
-          // Stop playing
-          navigator.serviceWorker.ready.then(registration => {
-            registration.active.postMessage({ action: 'stop' });
-          });
-          document.getElementById("play-pause").textContent = "START";
-          document.getElementById("status").textContent = "Paused";
-          isPlaying = false;
+          // Start visualizer
+          updateVisualizer();
         }
       }
 
-      // Update the timer display (remains the same UI logic)
+      // Update the timer display
       function updateTimerDisplay() {
         const display = document.getElementById("timer-display");
 
@@ -427,43 +469,53 @@
         }
       }
 
-      // Start the timer (no longer starts the interval here, just sets remainingTime and updates display)
+      // Start the timer
       function startTimer(minutes) {
+        clearInterval(timerInterval);
         remainingTime = minutes;
         updateTimerDisplay();
-        if (isPlaying && minutes > 0) {
-          navigator.serviceWorker.ready.then(registration => {
-            registration.active.postMessage({ action: 'start', noiseType: currentNoiseType, duration: minutes }); // Restart timer in SW
-          });
-        } else if (isPlaying && minutes <= 0) {
-          navigator.serviceWorker.ready.then(registration => {
-            registration.active.postMessage({ action: 'clearTimer' }); // Clear timer in SW
-          });
-        }
+
+        timerInterval = setInterval(() => {
+          remainingTime--;
+          updateTimerDisplay();
+
+          if (remainingTime <= 0) {
+            // Stop playing when timer ends
+            if (isPlaying) {
+              toggleNoise();
+            }
+            clearInterval(timerInterval);
+          }
+        }, 60000); // Update every minute
       }
 
-      // Set timer preset (updates UI and calls startTimer)
+      // Set timer preset
       function setTimerPreset(minutes) {
         remainingTime = minutes;
         updateTimerDisplay();
 
-        // Update active class (same UI update)
+        // Clear existing timer if playing
+        if (isPlaying) {
+          clearInterval(timerInterval);
+          if (minutes > 0) {
+            startTimer(minutes);
+          }
+        }
+
+        // Update active class
         document.querySelectorAll(".timer-preset").forEach((preset) => {
           preset.classList.remove("active");
         });
         document
           .querySelector(`.timer-preset[data-time="${minutes}"]`)
           .classList.add("active");
-
-        startTimer(minutes); // Call startTimer to update service worker if playing
       }
 
       // Initialize the app
       function init() {
         initVisualizer();
-        initAudio(); // Initialize audio context (for visualizer)
 
-        // Set up event listeners (mostly the same, but toggleNoise and timer logic changed)
+        // Set up event listeners
         document
           .getElementById("play-pause")
           .addEventListener("click", toggleNoise);
@@ -471,47 +523,26 @@
         document
           .getElementById("volume")
           .addEventListener("input", function () {
-            const volumeLevel = parseFloat(this.value);
-            navigator.serviceWorker.ready.then(registration => {
-              registration.active.postMessage({ action: 'setVolume', volume: volumeLevel });
-            });
+            if (gainNode) {
+              gainNode.gain.value = this.value;
+            }
           });
 
-        // Timer presets (same event listeners, but buttons are updated in HTML)
+        // Timer presets
         document.querySelectorAll(".timer-preset").forEach((preset) => {
           preset.addEventListener("click", function () {
             setTimerPreset(parseInt(this.dataset.time));
           });
         });
 
-        // New Event Listener for Custom Timer Button:
-        document.getElementById('set-custom-timer').addEventListener('click', function() {
-          const customMinutes = parseInt(document.getElementById('custom-duration').value, 10);
-          if (isNaN(customMinutes) || customMinutes <= 0) {
-            alert("Please enter a valid duration in minutes.");
-            return;
-          }
-          setTimerPreset(customMinutes);
-          // Clear active class from presets when custom timer is set
-          document.querySelectorAll(".timer-preset").forEach((preset) => {
-            preset.classList.remove("active");
-          });
-        });
-
-
-        // Noise type options (now just updates currentNoiseType and sends message to SW on play)
+        // Noise type options
         document.querySelectorAll(".noise-option").forEach((option) => {
           option.addEventListener("click", function () {
-            currentNoiseType = this.id;
-            navigator.serviceWorker.ready.then(registration => {
-              registration.active.postMessage({ action: 'setNoiseType', noiseType: currentNoiseType });
-            });
-            document.querySelectorAll(".noise-option").forEach((opt) => opt.classList.remove('active'));
-            option.classList.add('active');
+            createNoise(this.id);
           });
         });
 
-        // Service Worker Registration (already present, keep it)
+        // Enable audio to continue in background
         if ("serviceWorker" in navigator) {
           navigator.serviceWorker
             .register("sw.js")
@@ -523,21 +554,28 @@
             });
         }
 
-        // Wake Lock (keep it if you want to prevent screen sleep in foreground)
+        // Prevent screen from sleeping
         if (navigator.wakeLock) {
-          // ... (same wake lock logic) ...
-        }
-
-        // Service worker message listener - to receive timer ended event
-        navigator.serviceWorker.addEventListener('message', event => {
-          if (event.data.action === 'timerEnded') {
-            console.log('Timer ended in Service Worker, stopping playback in UI.');
-            if (isPlaying) {
-              toggleNoise(); // Stop playback in UI as well
-              alert('Timer ended! Playback stopped.'); // Or update UI to reflect timer end instead of alert
+          let wakeLock = null;
+          const requestWakeLock = async () => {
+            try {
+              wakeLock = await navigator.wakeLock.request("screen");
+            } catch (err) {
+              console.log(`WakeLock error: ${err.name}, ${err.message}`);
             }
-          }
-        });
+          };
+
+          document
+            .getElementById("play-pause")
+            .addEventListener("click", () => {
+              if (isPlaying) {
+                requestWakeLock();
+              } else if (wakeLock) {
+                wakeLock.release();
+                wakeLock = null;
+              }
+            });
+        }
       }
 
       // Call init on page load
