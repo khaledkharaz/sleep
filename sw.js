@@ -1,13 +1,12 @@
 // sw.js (Combined Service Worker - Caching, Background Audio, and Cache Versioning)
 
 // **Cache Versioning:** Increment this version number every time you deploy a new version of your app!
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v1.1';
 const CACHE_NAME = 'sleep-white-noise-cache-' + CACHE_VERSION;
 
 // Define assets to cache for offline use
 const basePath = self.location.pathname.replace('sw.js', ''); // Base path for relative URLs
-const urlsToCache = [
-  basePath,                 // Root path (e.g., '/')
+const urlsToCache = [  basePath,                 // Root path (e.g., '/')
   basePath + 'index.html',   // Main HTML file
   basePath + 'sw.js'        // Service worker itself (consider if you really need to cache this)
   // Add other static assets you want to cache here (CSS, JS files, images, etc.)
