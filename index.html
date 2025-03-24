@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sleep White Noise</title>
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#4e54c8" />
+    <!-- Add these lines for iOS support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="Sleep White Noise" />
+    <!-- <link rel="apple-touch-icon" href="icon-192.png" /> -->
+    <!-- Rest of your head content... -->
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        background-color: #121212;
+        color: #e0e0e0;
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      .container {
+        width: 90%;
+        max-width: 500px;
+        padding: 20px;
+        background-color: #1e1e1e;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 30px;
+        color: #ffffff;
+      }
+      .control-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .slider-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      label {
+        font-size: 18px;
+        margin-bottom: 5px;
+      }
+      .slider {
+        width: 100%;
+        height: 15px;
+        -webkit-appearance: none;
+        appearance: none;
+        background: #2d2d2d;
+        border-radius: 10px;
+        outline: none;
+      }
+      .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 25px;
+        height: 25px;
+        background: #4e54c8;
+        border-radius: 50%;
+        cursor: pointer;
+      }
+      .slider::-moz-range-thumb {
+        width: 25px;
+        height: 25px;
+        background: #4e54c8;
+        border-radius: 50%;
+        cursor: pointer;
+      }
+      .time-display {
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        margin: 20px 0;
+      }
+      .button {
+        padding: 15px 0;
+        border: none;
+        border-radius: 50px;
+        background: linear-gradient(135deg, #4e54c8, #8f94fb);
+        color: white;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      .button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(78, 84, 200, 0.4);
+      }
+      .button:active {
+        transform: translateY(0);
+      }
+      .status {
+        margin-top: 20px;
+        text-align: center;
+        font-size: 16px;
+      }
+      .noise-options {
+        display: flex;
+        justify-content: space-around;
+        margin-bottom: 20px;
+      }
+      .noise-option {
+        padding: 10px 15px;
+        background-color: #2d2d2d;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      .noise-option.active {
+        background-color: #4e54c8;
+      }
+      .noise-option:hover {
+        background-color: #3d3d3d;
+      }
+      .timer-options {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+      .timer-preset {
+        padding: 8px 12px;
+        background-color: #2d2d2d;
+        border-radius: 15px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .timer-preset:hover {
+        background-color: #3d3d3d;
+      }
+      .timer-preset.active {
+        background-color: #4e54c8;
+      }
+      .visualizer {
+        height: 100px;
+        width: 100%;
+        margin: 20px 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .bar {
+        width: 4px;
+        background-color: #4e54c8;
+        border-radius: 2px;
+        transition: height 0.2s ease;
+      }
+      .slider-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 5px;
+        font-size: 12px;
+        color: #aaaaaa;
+      }
+      .timer-infinity-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        margin-top: 5px;
+      }
+      .infinity-label {
+        margin-right: 10px;
+        font-size: 14px;
+      }
+      .toggle {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+      }
+      .toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #2d2d2d;
+        transition: 0.4s;
+        border-radius: 24px;
+      }
+      .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+      }
+      input:checked + .toggle-slider {
+        background-color: #4e54c8;
+      }
+      input:checked + .toggle-slider:before {
+        transform: translateX(26px);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Sleep White Noise</h1>
+
+      <div class="noise-options">
+        <div class="noise-option active" id="white">White Noise</div>
+        <div class="noise-option" id="pink">Pink Noise</div>
+        <div class="noise-option" id="brown">Brown Noise</div>
+      </div>
+
+      <div class="visualizer" id="visualizer">
+        <!-- Bars will be dynamically generated -->
+      </div>
+
+      <div class="control-panel">
+        <div class="slider-container">
+          <label for="volume">Volume</label>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value="0.5"
+            class="slider"
+            id="volume"
+          />
+        </div>
+
+        <div class="time-display">
+          <span id="timer-display">1 hr</span>
+        </div>
+
+        <div class="timer-options">
+          <div class="timer-preset" data-time="15">15 min</div>
+          <div class="timer-preset" data-time="30">30 min</div>
+          <div class="timer-preset active" data-time="60">1 hr</div>
+          <div class="timer-preset" data-time="120">2 hrs</div>
+          <div class="timer-preset" data-time="240">4 hrs</div>
+          <div class="timer-preset" data-time="480">8 hrs</div>
+          <div class="timer-preset" data-time="-1">∞</div>
+        </div>
+
+        <button class="button" id="play-pause">START</button>
+
+        <div class="status" id="status">Ready to play</div>
+      </div>
+    </div>
+
+    <script>
+      // Audio Context
+      let audioContext;
+      let noiseNode;
+      let gainNode;
+      let analyser;
+      let isPlaying = false;
+      let timerInterval;
+      let remainingTime = -1; // -1 means infinity
+      let currentNoiseType = "white";
+      let noiseBuffer;
+      let visualizerBars = [];
+
+      // Initialize visualizer
+      function initVisualizer() {
+        const visualizer = document.getElementById("visualizer");
+        visualizer.innerHTML = "";
+
+        const barCount = 30;
+        for (let i = 0; i < barCount; i++) {
+          const bar = document.createElement("div");
+          bar.className = "bar";
+          bar.style.height = "3px";
+          visualizer.appendChild(bar);
+          visualizerBars.push(bar);
+        }
+      }
+
+      // Update visualizer
+      function updateVisualizer() {
+        if (!analyser || !isPlaying) return;
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(dataArray);
+
+        // Calculate the average values for each bar
+        const binSize = Math.floor(dataArray.length / visualizerBars.length);
+
+        for (let i = 0; i < visualizerBars.length; i++) {
+          const start = i * binSize;
+          let sum = 0;
+          for (let j = 0; j < binSize; j++) {
+            sum += dataArray[start + j];
+          }
+          const average = sum / binSize;
+          const height = Math.max(3, (average / 255) * 80);
+          visualizerBars[i].style.height = `${height}px`;
+        }
+
+        requestAnimationFrame(updateVisualizer);
+      }
+
+      // Initialize audio context
+      function initAudio() {
+        try {
+          audioContext = new (window.AudioContext ||
+            window.webkitAudioContext)();
+          gainNode = audioContext.createGain();
+          analyser = audioContext.createAnalyser();
+
+          analyser.fftSize = 2048;
+          gainNode.connect(analyser);
+          analyser.connect(audioContext.destination);
+
+          // Set initial volume
+          const volumeSlider = document.getElementById("volume");
+          gainNode.gain.value = volumeSlider.value;
+
+          // Create initial noise
+          createNoise(currentNoiseType);
+
+          return true;
+        } catch (e) {
+          console.error("Audio initialization failed:", e);
+          document.getElementById("status").textContent =
+            "Audio failed to initialize. Please try another browser.";
+          return false;
+        }
+      }
+
+      // Create noise of specified type
+      function createNoise(type) {
+        currentNoiseType = type;
+
+        if (noiseNode) {
+          noiseNode.disconnect();
+        }
+
+        // Create 2-second buffer (longer is more CPU efficient)
+        const bufferSize = 2 * audioContext.sampleRate;
+        noiseBuffer = audioContext.createBuffer(
+          1,
+          bufferSize,
+          audioContext.sampleRate
+        );
+        const data = noiseBuffer.getChannelData(0);
+
+        // Fill the buffer with noise based on type
+        let b0 = 0,
+          b1 = 0,
+          b2 = 0,
+          b3 = 0,
+          b4 = 0,
+          b5 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+          let white = Math.random() * 2 - 1;
+
+          if (type === "white") {
+            data[i] = white;
+          } else if (type === "pink") {
+            // Pink noise algorithm (Paul Kellet's method)
+            b0 = 0.99886 * b0 + white * 0.0555179;
+            b1 = 0.99332 * b1 + white * 0.0750759;
+            b2 = 0.969 * b2 + white * 0.153852;
+            b3 = 0.8665 * b3 + white * 0.3104856;
+            b4 = 0.55 * b4 + white * 0.5329522;
+            b5 = -0.7616 * b5 - white * 0.016898;
+            data[i] =
+              (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+          } else if (type === "brown") {
+            // Brown noise (integrated white noise)
+            const brown = (b0 + 0.02 * white) / 1.02;
+            b0 = brown;
+            data[i] = brown * 3.5; // Amplify as brown is quiet
+          }
+        }
+
+        noiseNode = audioContext.createBufferSource();
+        noiseNode.buffer = noiseBuffer;
+        noiseNode.loop = true;
+
+        if (isPlaying) {
+          noiseNode.connect(gainNode);
+          noiseNode.start();
+        }
+
+        // Update active class on noise options
+        document.querySelectorAll(".noise-option").forEach((option) => {
+          option.classList.remove("active");
+        });
+        document.getElementById(type).classList.add("active");
+      }
+
+      // Start or stop the noise
+      function toggleNoise() {
+        if (!audioContext) {
+          if (!initAudio()) return;
+        }
+
+        if (isPlaying) {
+          // Stop playing
+          if (noiseNode) {
+            noiseNode.stop();
+            noiseNode.disconnect();
+          }
+          clearInterval(timerInterval);
+          document.getElementById("play-pause").textContent = "START";
+          document.getElementById("status").textContent = "Paused";
+          isPlaying = false;
+        } else {
+          // Resume or start context if suspended
+          if (audioContext.state === "suspended") {
+            audioContext.resume();
+          }
+
+          // Start playing
+          noiseNode = audioContext.createBufferSource();
+          noiseNode.buffer = noiseBuffer;
+          noiseNode.loop = true;
+          noiseNode.connect(gainNode);
+          noiseNode.start();
+
+          document.getElementById("play-pause").textContent = "STOP";
+          document.getElementById("status").textContent = "Playing";
+          isPlaying = true;
+
+          // Start timer if set
+          if (remainingTime > 0) {
+            startTimer(remainingTime);
+          }
+
+          // Start visualizer
+          updateVisualizer();
+        }
+      }
+
+      // Update the timer display
+      function updateTimerDisplay() {
+        const display = document.getElementById("timer-display");
+
+        if (remainingTime <= 0) {
+          display.textContent = "∞";
+          return;
+        }
+
+        const hours = Math.floor(remainingTime / 60);
+        const minutes = remainingTime % 60;
+
+        if (hours > 0) {
+          display.textContent = `${hours}h ${minutes}m`;
+        } else {
+          display.textContent = `${minutes}m`;
+        }
+      }
+
+      // Start the timer
+      function startTimer(minutes) {
+        clearInterval(timerInterval);
+        remainingTime = minutes;
+        updateTimerDisplay();
+
+        timerInterval = setInterval(() => {
+          remainingTime--;
+          updateTimerDisplay();
+
+          if (remainingTime <= 0) {
+            // Stop playing when timer ends
+            if (isPlaying) {
+              toggleNoise();
+            }
+            clearInterval(timerInterval);
+          }
+        }, 60000); // Update every minute
+      }
+
+      // Set timer preset
+      function setTimerPreset(minutes) {
+        remainingTime = minutes;
+        updateTimerDisplay();
+
+        // Clear existing timer if playing
+        if (isPlaying) {
+          clearInterval(timerInterval);
+          if (minutes > 0) {
+            startTimer(minutes);
+          }
+        }
+
+        // Update active class
+        document.querySelectorAll(".timer-preset").forEach((preset) => {
+          preset.classList.remove("active");
+        });
+        document
+          .querySelector(`.timer-preset[data-time="${minutes}"]`)
+          .classList.add("active");
+      }
+
+      // Initialize the app
+      function init() {
+        initVisualizer();
+
+        // Set up event listeners
+        document
+          .getElementById("play-pause")
+          .addEventListener("click", toggleNoise);
+
+        document
+          .getElementById("volume")
+          .addEventListener("input", function () {
+            if (gainNode) {
+              gainNode.gain.value = this.value;
+            }
+          });
+
+        // Timer presets
+        document.querySelectorAll(".timer-preset").forEach((preset) => {
+          preset.addEventListener("click", function () {
+            setTimerPreset(parseInt(this.dataset.time));
+          });
+        });
+
+        // Noise type options
+        document.querySelectorAll(".noise-option").forEach((option) => {
+          option.addEventListener("click", function () {
+            createNoise(this.id);
+          });
+        });
+
+        // Enable audio to continue in background
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker
+            .register("sw.js")
+            .then((registration) => {
+              console.log("ServiceWorker registration successful");
+            })
+            .catch((err) => {
+              console.log("ServiceWorker registration failed: ", err);
+            });
+        }
+
+        // Prevent screen from sleeping
+        if (navigator.wakeLock) {
+          let wakeLock = null;
+          const requestWakeLock = async () => {
+            try {
+              wakeLock = await navigator.wakeLock.request("screen");
+            } catch (err) {
+              console.log(`WakeLock error: ${err.name}, ${err.message}`);
+            }
+          };
+
+          document
+            .getElementById("play-pause")
+            .addEventListener("click", () => {
+              if (isPlaying) {
+                requestWakeLock();
+              } else if (wakeLock) {
+                wakeLock.release();
+                wakeLock = null;
+              }
+            });
+        }
+      }
+
+      // Call init on page load
+      window.addEventListener("load", init);
+    </script>
+  </body>
+</html>
