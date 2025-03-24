@@ -1,7 +1,7 @@
 // sw.js (Combined Service Worker - Caching, Background Audio, and Cache Versioning)
 
 // **Cache Versioning:** Increment this version number every time you deploy a new version of your app!
-const CACHE_VERSION = 'v1.1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = 'sleep-white-noise-cache-' + CACHE_VERSION;
 
 // Define assets to cache for offline use
