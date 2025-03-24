@@ -2,7 +2,7 @@
     "name": "Sleep White Noise",
     "short_name": "Sleep",
     "description": "A white noise generator app to help you sleep",
-    "start_url": "/timer/",
+    "start_url": "/sleep/",
     "display": "standalone",
     "background_color": "#121212",
     "theme_color": "#4e54c8"
